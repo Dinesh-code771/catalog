@@ -1,8 +1,24 @@
-import React, { useState } from 'react';
-import { ArrowUpRight, Maximize2, ArrowRight } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useEffect, useState } from "react";
+import { ArrowUpRight, Maximize2, ArrowRight } from "lucide-react";
+import {
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  ReferenceLine,
+} from "recharts";
+
+interface DataPoint {
+  timestamp: string;
+  price: number;
+  volume: number;
+}
 
 function App() {
+  const [data, setData] = useState<DataPoint[]>([]);
   const [activeTab, setActiveTab] = useState('Chart');
   const [activeTimeframe, setActiveTimeframe] = useState('1w');
 
@@ -16,30 +32,40 @@ function App() {
     { label: '1y', value: '1y' },
     { label: 'max', value: 'max' },
   ];
+  const fixedPrice = 64850.35; // Fixed price to be shown in the chart
 
-  // Sample data for the chart
-  const data = Array.from({ length: 100 }, (_, index) => {
-    const basePrice = 63000;
-    const randomFactor = Math.sin(index / 10) * 2000 + Math.random() * 1000;
-    return {
-      timestamp: new Date(Date.now() - (100 - index) * 3600000).toISOString(),
-      price: basePrice + randomFactor,
-    };
-  });
+  useEffect(() => {
+    const generatedData = Array.from({ length: 100 }, (_, index) => {
+      const basePrice = 63000;
+      const randomFactor = Math.sin(index / 10) * 2000 + Math.random() * 1000;
+      const volume = Math.random() * 100 + 20;
 
-  const CustomTooltip = ({ active, payload }: any) => {
+      return {
+        timestamp: new Date(Date.now() - (100 - index) * 3600000).toISOString(),
+        price: basePrice + randomFactor,
+        volume: volume,
+      };
+    });
+    setData(generatedData);
+  }, []);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const priceData = payload.find((p: any) => p.dataKey === "price");
       return (
-        <div className="bg-white p-2 shadow-lg rounded border">
-          <p className="text-sm font-medium">
-            ${payload[0].value.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </p>
-          <p className="text-xs text-gray-500">
-            {new Date(payload[0].payload.timestamp).toLocaleString()}
-          </p>
+        <div className="bg-white p-3 shadow-lg rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-500 mb-1">{label}</div>
+          <div className="font-medium text-gray-900 mb-1">
+            {formatCurrency(priceData.value)}
+          </div>
         </div>
       );
     }
@@ -51,17 +77,17 @@ function App() {
       <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-4xl">
         {/* Price Header */}
         <div className="mb-6">
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-4xl font-bold">63,179.71</h1>
+          <div className="flex  gap-3">
+            <h1 className="text-5xl leading-none text-secondary dark:text-secondaryDark">
+              63,179.71
+            </h1>
             <span className="text-gray-500">USD</span>
           </div>
-          <div className="flex items-center gap-1 text-green-500">
+          <div className="flex items-center mt-3 gap-1 text-green-500">
             <ArrowUpRight size={20} />
             <span>+2,161.42 (3.54%)</span>
           </div>
         </div>
-
-        {/* Navigation Tabs */}
         <div className="flex items-center border-b mb-6">
           {tabs.map((tab) => (
             <button
@@ -69,8 +95,8 @@ function App() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 -mb-px ${
                 activeTab === tab
-                  ? 'text-blue-600 border-b-2 border-blue-600'
-                  : 'text-gray-500'
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-500"
               }`}
             >
               {tab}
@@ -99,8 +125,8 @@ function App() {
                 onClick={() => setActiveTimeframe(value)}
                 className={`px-3 py-1 rounded-full text-sm ${
                   activeTimeframe === value
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 {label}
@@ -112,39 +138,86 @@ function App() {
         {/* Chart Area */}
         <div className="relative h-[400px] bg-white rounded-lg">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
+            <ComposedChart
+              data={data}
+              margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis
-                dataKey="timestamp"
-                tickFormatter={(timestamp) => {
-                  return new Date(timestamp).toLocaleDateString();
-                }}
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-              />
+
+              {/* Y-Axis Price */}
               <YAxis
-                domain={['dataMin - 1000', 'dataMax + 1000']}
-                tick={{ fontSize: 12 }}
+                yAxisId="price"
+                domain={["dataMin - 1000", "dataMax + 500"]}
+                tickFormatter={formatCurrency}
+                tick={{ fontSize: 10 }}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => `$${value.toLocaleString()}`}
+                orientation="right"
+                display="none"
               />
-              <Tooltip content={<CustomTooltip />} />
+
+              {/* X-Axis Volume */}
+
+              {/* Y-Axis Volume (Reduced Max Height) */}
+              <YAxis
+                yAxisId="volume"
+                domain={[0, "dataMax * 0.5"]} // Reduce max height of bars
+                tick={{ fontSize: 10 }}
+                tickLine={false}
+                axisLine={false}
+                hide
+              />
+
+              {/* Tooltip */}
+              <Tooltip
+                content={<CustomTooltip />}
+                cursor={{
+                  stroke: "#666",
+                  strokeWidth: 1,
+                  strokeDasharray: "4 4",
+                }}
+              />
+
+              {/* Reference Line for Fixed Price */}
+              <ReferenceLine
+                y={fixedPrice}
+                yAxisId="price"
+                stroke="gray"
+                strokeDasharray="3 3"
+                label={{
+                  value: formatCurrency(fixedPrice),
+                  position: "right",
+                  fill: "gray",
+                  fontSize: 12,
+                }}
+              />
+
+              {/* Main Price Line */}
               <Area
+                yAxisId="price"
                 type="monotone"
                 dataKey="price"
                 stroke="#3b82f6"
                 fillOpacity={1}
                 fill="url(#colorPrice)"
-                strokeWidth={2}
+                strokeWidth={0.1}
               />
-            </AreaChart>
+
+              {/* Volume Bars - Reduced Height */}
+              <Bar
+                yAxisId="volume"
+                dataKey="volume"
+                fill="#e5e7eb"
+                opacity={0.2}
+                maxBarSize={5} // Reduce bar width
+                barSize={5} // Keep bars thin
+              />
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>
