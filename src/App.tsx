@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { ArrowUpRight, Maximize2, ArrowRight, X } from "lucide-react";
 
-import ChartComponent from "./components/ChartComponent";
 import PriceHeader from "./components/PriceHeader";
-
+import D3ChartComponent from "./components/D3ChartComponent";
 interface DataPoint {
-  timestamp: string;
+  timestamp: Date;
   price: number;
   volume: number;
 }
@@ -29,17 +28,29 @@ function App() {
   const fixedPrice = 64850.35; // Fixed price to be shown in the chart
 
   useEffect(() => {
-    const generatedData = Array.from({ length: 100 }, (_, index) => {
-      const basePrice = 63000;
-      const randomFactor = Math.sin(index / 10) * 2000 + Math.random() * 1000;
-      const volume = Math.random() * 100 + 20;
+    const generatedData = Array.from({ length: 130 }, (_, index) => {
+      const basePrice = 60000; // Start price
+      const growthFactor = index * 10; // Ensures a steady growth trend
+      const randomFactor = Math.sin(index / 5) * 1000 + Math.random() * 500; // Smooth variations
+
+      // Controlled spikes (5% chance for an up spike, 3% for a down spike)
+      let spike = 0;
+      if (Math.random() < 0.05) {
+        spike = Math.random() * 3000; // Positive spike (Upward movement)
+      } else if (Math.random() < 0.03) {
+        spike = -Math.random() * 1500; // Smaller downward spike (Less drastic drops)
+      }
+
+      const volume = Math.random() * 100 + 20 + Math.abs(spike) / 200; // Larger spikes = more volume
+      const timestamp = new Date(Date.now() - (400 - index) * 3600000); // Keeps timestamps in order
 
       return {
-        timestamp: new Date(Date.now() - (100 - index) * 3600000).toISOString(),
-        price: basePrice + randomFactor,
+        timestamp,
+        price: basePrice + growthFactor + randomFactor + spike, // Final calculated price
         volume: volume,
       };
     });
+
     setData(generatedData);
   }, []);
 
@@ -66,8 +77,7 @@ function App() {
     return null;
   };
 
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp);
+  const formatDate = (date: Date) => {
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
@@ -91,12 +101,11 @@ function App() {
               </button>
             </div>
           </div>
-          <div className="flex-1 p-4">
-            <ChartComponent
+          <div className="flex-1 p-4 relative">
+            <D3ChartComponent
               data={data}
               formatDate={formatDate}
               formatCurrency={formatCurrency}
-              CustomTooltip={CustomTooltip}
               isFullscreen={isFullscreen}
               setIsFullscreen={setIsFullscreen}
               fixedPrice={fixedPrice}
@@ -164,11 +173,10 @@ function App() {
 
         {/* Chart Area */}
         <div className="relative h-[400px] bg-white rounded-lg">
-          <ChartComponent
+          <D3ChartComponent
             data={data}
             formatDate={formatDate}
             formatCurrency={formatCurrency}
-            CustomTooltip={CustomTooltip}
             isFullscreen={isFullscreen}
             setIsFullscreen={setIsFullscreen}
             fixedPrice={fixedPrice}
