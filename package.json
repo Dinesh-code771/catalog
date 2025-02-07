@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://github.com/Dinesh-code771/catelog",
+  "homepage": "https://github.com/Dinesh-code771/catalog",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
